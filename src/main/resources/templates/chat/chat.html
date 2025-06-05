@@ -110,11 +110,11 @@
             <div class="main-chat" id="mainChat">
                 <div class="chat-list" id="mainChatList"></div>
                 <div class="input-area">
-                    <textarea class="chat-input form-control" id="mainInput" rows="1" placeholder="메시지를 입력하세요..."></textarea>
+                    <textarea class="chat-input form-control" id="mainInput" rows="1" placeholder="메시지 입력"></textarea>
                     <div class="input-button" id="observerToggle" style="display:none;" onclick="toggleObserver()">
                         <i class="fas fa-compress"></i>
                     </div>
-                    <div class="input-button" id="observerAdd" onclick="showObserverToggle()">
+                    <div class="input-button" id="observerAdd" onclick="showObserverToggle()" title="확장/축소">
                         <i class="fas fa-user-plus"></i>
                     </div>
                 </div>
@@ -124,7 +124,7 @@
             <div class="observer-chat" id="observerChat">
                 <div class="chat-list" id="observerChatList"></div>
                 <div class="input-area">
-                    <textarea class="chat-input form-control" id="observerInput" rows="1" placeholder="옵저버 메시지 입력..."></textarea>
+                    <textarea class="chat-input form-control" id="observerInput" rows="1" placeholder="메시지 입력"></textarea>
                 </div>
             </div>
         </div>
