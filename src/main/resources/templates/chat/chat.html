@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html
+        lang="ko"
+        xmlns:th="http://www.thymeleaf.org"
+        xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+        layout:decorate="~{layout/layout}"
+>
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+
+</body>
+
+<html
+        lang="ko"
+        xmlns:th="http://www.thymeleaf.org"
+        xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+        layout:decorate="~{layout/layout}"
+>
+    <th:block layout:fragment="content">
+
+    </th:block>
+    <th:block layout:fragment="script">
+        <script>
+            const socket = new SockJS('/chat');
+            const stompClient = Stomp.over(socket);
+
+            stompClient.connect({}, function () {
+                stompClient.subscribe('/topic/messages', function (messageOutput) {
+                    const message = JSON.parse(messageOutput.body);
+                    console.log(message);
+                });
+
+                stompClient.send("/app/send", {}, JSON.stringify({
+                    sender: "user1",
+                    content: "Hello!"
+                }));
+            });
+
+        </script>
+    </th:block>
+</html>

@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en"
+	  xmlns:th="http://www.thymeleaf.org"
+	  xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	  class="fontawesome-i2svg-active fontawesome-i2svg-complete"
+>
+	<head>
+		<th:bloc th:replace="~{layout/head::head}"></th:bloc>
+	</head>
+	<body>
+		<th:bloc th:replace="~{layout/gnb::gnb}"></th:bloc>
+		<div class="content">
+			<th:bloc layout:fragment="content"></th:bloc>
+		</div>
+		<th:bloc layout:fragment="script"></th:bloc>
+	</body>
+</html>
