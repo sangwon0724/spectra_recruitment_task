@@ -8,166 +8,153 @@
     <th:block>
         <style layout:fragment="style">
             html, body {
-                height: 100%;
-                margin: 0;
-                overflow: hidden;
+                height: 100%; margin: 0; overflow: hidden;
             }
-
-            .chat-wrapper {
-                display: flex;
-                height: 100vh;
-            }
-
-            .main-chat {
-                width: 100%;
-                display: flex;
-                flex-direction: column;
-                transition: width 0.3s;
-            }
-
-            .observer-chat {
-                width: 0;
-                overflow: hidden;
-                background-color: #f1f3f5;
-                border-left: 1px solid #ccc;
-                transition: width 0.3s;
-                display: flex;
-                flex-direction: column;
-            }
-
-            .chat-list {
-                flex: 1;
-                overflow-y: auto;
-                padding: 1rem;
-            }
-
+            .chat-wrapper { display: flex; height: calc(100vh - 70px); }
+            .main-chat { width: 100%; display: flex; flex-direction: column; transition: width 0.3s; }
+            .observer-chat { width: 0; overflow: hidden; background-color: #f1f3f5; border-left: 1px solid #ccc; transition: width 0.3s; display: flex; flex-direction: column; }
+            .chat-list { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; }
             .chat-message {
-                margin-bottom: 0.75rem;
-                max-width: 75%;
-                padding: 0.5rem 1rem;
-                border-radius: 0.75rem;
+                display: block;
+                max-width: 70%; padding: 0.5rem 1rem; border-radius: 0.75rem;
+                margin-bottom: 0.25rem; position: relative; word-break: break-word;
             }
-
-            .chat-message.customer {
-                background-color: #e9f5ff;
-                align-self: flex-start;
+            .chat-group { margin-bottom: 1.5rem; display: flex; flex-direction: column; }
+            .chat-header { font-size: 0.85rem; font-weight: bold; margin-bottom: 0.25rem; }
+            .chat-message.customer { background-color: #e9f5ff; align-self: flex-start; margin-left: 10px; }
+            .chat-message.agent { background-color: #d1e7dd; align-self: flex-end; margin-right: 10px; }
+            .chat-message.observer { background-color: #fff3cd; align-self: flex-start; margin-left: 10px; }
+            .timestamp {
+                font-size: 0.75rem; color: #6c757d; position: absolute; bottom: -1.2rem;
             }
-
-            .chat-message.agent {
-                background-color: #d1e7dd;
-                align-self: flex-end;
-            }
-
-            .chat-message.observer {
-                background-color: #fff3cd;
-                align-self: flex-start;
-            }
-
+            .chat-message.agent .timestamp { right: 0; }
+            .chat-message.customer .timestamp { left: 0; }
             .input-area {
-                padding: 0.75rem;
-                border-top: 1px solid #ccc;
-                display: flex;
-                align-items: flex-end;
-                height: 10vh;
-                min-height: 4rem;
-                transition: height 0.2s;
+                padding: 0.75rem; border-top: 1px solid #ccc;
+                display: flex; align-items: flex-end;
+                min-height: 4rem; transition: height 0.2s;
             }
-
             .chat-input {
-                resize: none;
-                border-radius: 0.5rem;
-                width: 90%;
-                height: 90%;
-                padding: 0.5rem;
+                resize: none; border-radius: 0.5rem;
+                width: 90%; height: 90%; padding: 0.5rem;
+                overflow-y: auto; scrollbar-width: none;
             }
-
+            .chat-input::-webkit-scrollbar { display: none; }
             .input-button {
-                width: 40px;
-                height: 40px;
-                margin-left: 0.5rem;
-                border-radius: 50%;
-                background-color: #0d6efd;
-                color: white;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
-                flex-shrink: 0;
+                width: 40px; height: 40px; margin-left: 0.5rem; border-radius: 50%;
+                background-color: #0d6efd; color: white; display: flex;
+                align-items: center; justify-content: center; cursor: pointer;
             }
-
-            .chat-header {
-                font-size: 0.8rem;
-                font-weight: bold;
-                margin-bottom: 0.25rem;
+            .gnb {
+                height: 70px; padding: 0 15px;
+                background-color: white; border-bottom: 1px solid #ddd;
+                display: flex; align-items: center; justify-content: space-between;
             }
-
-            /* Scroll fix */
-            textarea {
-                overflow-y: auto;
+            .end-button {
+                padding: 0.5rem 1rem; background-color: #dc3545; color: white;
+                border-radius: 0.5rem; border: none;
             }
         </style>
     </th:block>
     <th:block layout:fragment="content">
+        <!-- GNB -->
+        <div class="gnb">
+            <div>상담 목적 : 배송 문의</div>
+            <button class="end-button" onclick="endChat()">상담 종료</button>
+        </div>
+
         <div class="chat-wrapper">
-            <!-- 메인 채팅 영역 -->
+            <!-- 고객/상담사 영역 -->
             <div class="main-chat" id="mainChat">
-                <div class="chat-list" id="mainChatList">
-                    <div class="chat-header">고객</div>
-                    <div class="chat-message customer">안녕하세요, 문의드립니다.</div>
-                    <div class="chat-header text-end">홍길동 상담사</div>
-                    <div class="chat-message agent ms-auto">네, 무엇을 도와드릴까요?</div>
+                <div class="chat-list">
+                    <!-- 고객 메시지 그룹 -->
+                    <div class="chat-group">
+                        <div class="chat-header">고객</div>
+                        <div class="chat-message customer">안녕하세요!</div>
+                        <div class="chat-message customer">배송 문의드릴게요.</div>
+                        <div class="chat-message customer">언제 도착하나요?<div class="timestamp">오후 4:32</div></div>
+                    </div>
+                    <!-- 상담사 메시지 그룹 -->
+                    <div class="chat-group text-end">
+                        <div class="chat-header text-end">상담사</div>
+                        <div class="chat-message agent">안녕하세요 고객님.</div>
+                        <div class="chat-message agent">확인해보겠습니다.</div>
+                        <div class="chat-message agent">잠시만요.<div class="timestamp">오후 4:33</div></div>
+                    </div>
+                    <!-- 반복 -->
+                    <div class="chat-group">
+                        <div class="chat-header">고객</div>
+                        <div class="chat-message customer">감사합니다.</div>
+                        <div class="chat-message customer">혹시 내일까지 받을 수 있을까요?</div>
+                        <div class="chat-message customer">급한 건이라서요.<div class="timestamp">오후 4:34</div></div>
+                    </div>
+                    <div class="chat-group text-end">
+                        <div class="chat-header text-end">상담사</div>
+                        <div class="chat-message agent">내일 도착은 어려울 수 있습니다.</div>
+                        <div class="chat-message agent">최대한 빠르게 처리하겠습니다.<div class="timestamp">오후 4:35</div></div>
+                    </div>
                 </div>
-                <div class="input-area" id="mainInputArea">
-                    <textarea class="chat-input form-control" id="mainInput" rows="1" placeholder="메시지 입력"></textarea>
-                    <div class="input-button" onclick="toggleObserver()">＋</div>
+                <div class="input-area">
+                    <textarea class="chat-input form-control" id="mainInput" rows="1" placeholder="메시지를 입력하세요..."></textarea>
+                    <div class="input-button" id="observerToggle" style="display:none;" onclick="toggleObserver()">
+                        <i class="fas fa-compress"></i>
+                    </div>
+                    <div class="input-button" id="observerAdd" onclick="showObserverToggle()">
+                        <i class="fas fa-user-plus"></i>
+                    </div>
                 </div>
             </div>
 
-            <!-- 옵저버 채팅 영역 -->
+            <!-- 옵저버 채팅 -->
             <div class="observer-chat" id="observerChat">
-                <div class="chat-list" id="observerChatList">
-                    <div class="chat-header">옵저버</div>
-                    <div class="chat-message observer">지켜보고 있습니다.</div>
-                    <div class="chat-header text-end">홍길동 상담사</div>
-                    <div class="chat-message agent ms-auto">이상 없습니다.</div>
+                <div class="chat-list">
+                    <div class="chat-group">
+                        <div class="chat-header">옵저버</div>
+                        <div class="chat-message observer">모니터링 중입니다.</div>
+                        <div class="chat-message observer">문제 없어보이네요.</div>
+                        <div class="chat-message observer">계속 진행하세요.<div class="timestamp">오후 4:36</div></div>
+                    </div>
+                    <div class="chat-group text-end">
+                        <div class="chat-header text-end">상담사</div>
+                        <div class="chat-message agent">네, 감사합니다.</div>
+                        <div class="chat-message agent">계속 응대하겠습니다.<div class="timestamp">오후 4:37</div></div>
+                    </div>
                 </div>
-                <div class="input-area" id="observerInputArea">
-                    <textarea class="chat-input form-control" id="observerInput" rows="1" placeholder="메시지 입력"></textarea>
-                    <div class="input-button bg-danger" onclick="toggleObserver()">－</div>
+                <div class="input-area">
+                    <textarea class="chat-input form-control" id="observerInput" rows="1" placeholder="옵저버 메시지 입력..."></textarea>
                 </div>
             </div>
         </div>
     </th:block>
     <th:block layout:fragment="script">
         <script>
+            const observerChat = document.getElementById('observerChat');
+            const mainChat = document.getElementById('mainChat');
+            const observerToggle = document.getElementById('observerToggle');
+            const observerAdd = document.getElementById('observerAdd');
             const mainInput = document.getElementById('mainInput');
-            const mainInputArea = document.getElementById('mainInputArea');
-            const observerInput = document.getElementById('observerInput');
-            const observerInputArea = document.getElementById('observerInputArea');
-
-            function autoResize(textarea, container) {
-                textarea.style.height = 'auto';
-                const newHeight = Math.min(textarea.scrollHeight, window.innerHeight * 0.35);
-                textarea.style.height = newHeight + 'px';
-                container.style.height = newHeight + 20 + 'px';
-            }
-
-            mainInput.addEventListener('input', () => autoResize(mainInput, mainInputArea));
-            observerInput.addEventListener('input', () => autoResize(observerInput, observerInputArea));
 
             function toggleObserver() {
-                const main = document.getElementById('mainChat');
-                const observer = document.getElementById('observerChat');
-
-                if (observer.style.width === '30%') {
-                    // 줄이기
-                    main.style.width = '100%';
-                    observer.style.width = '0';
+                if (observerChat.style.width === '30%') {
+                    observerChat.style.width = '0';
+                    mainChat.style.width = '100%';
+                    observerToggle.innerHTML = '<i class="fas fa-expand"></i>';
                 } else {
-                    // 열기
-                    main.style.width = '70%';
-                    observer.style.width = '30%';
+                    observerChat.style.width = '30%';
+                    mainChat.style.width = '70%';
+                    observerToggle.innerHTML = '<i class="fas fa-compress"></i>';
                 }
+            }
+
+            function showObserverToggle() {
+                observerAdd.style.display = 'none';
+                observerToggle.style.display = 'flex';
+                toggleObserver();
+            }
+
+            function endChat() {
+                mainInput.disabled = true;
+                //document.getElementById('observerInput').disabled = true;
             }
 
             //const socket = new SockJS('/chat');
