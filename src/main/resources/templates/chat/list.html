@@ -5,26 +5,77 @@
     xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
     layout:decorate="~{layout/layout}"
 >
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
-
-</body>
-
-<html
-    lang="ko"
-    xmlns:th="http://www.thymeleaf.org"
-    xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
-    layout:decorate="~{layout/layout}"
->
+    <th:block>
+        <style layout:fragment="style">
+            body {
+                background-color: #f8f9fa;
+            }
+            .chat-item {
+                border-radius: 0.75rem;
+                background-color: #ffffff;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+                transition: background-color 0.2s;
+                cursor: pointer;
+            }
+            .chat-item:hover {
+                background-color: #f1f1f1;
+            }
+            .chat-purpose {
+                font-size: 0.85rem;
+                color: #6c757d;
+            }
+            .chat-preview {
+                font-weight: 500;
+                color: #212529;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                max-width: 100%;
+            }
+            .chat-meta {
+                font-size: 0.8rem;
+                color: #6c757d;
+            }
+        </style>
+    </th:block>
     <th:block layout:fragment="content">
+        <div class="container py-4">
+            <h5 class="mb-3 fw-semibold">채팅 목록</h5>
+            <div class="list-group">
+                <!-- 채팅 항목 -->
+                <div class="list-group-item chat-item mb-2 px-3 py-3" onclick="goChat(1)">
+                    <div class="row">
+                        <div class="col">
+                            <div class="chat-purpose mb-1">상담 목적: 배송 문의</div>
+                            <div class="chat-preview">배송이 언제쯤 도착할까요?</div>
+                        </div>
+                        <div class="col-auto text-end d-flex flex-column justify-content-between">
+                            <div class="chat-meta">2025-06-04</div>
+                            <span class="badge bg-primary rounded-pill align-self-end">5</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="list-group-item chat-item mb-2 px-3 py-3">
+                    <div class="row">
+                        <div class="col">
+                            <div class="chat-purpose mb-1">상담 목적: 결제 오류</div>
+                            <div class="chat-preview">결제가 안되고 오류가 납니다</div>
+                        </div>
+                        <div class="col-auto text-end d-flex flex-column justify-content-between">
+                            <div class="chat-meta">2025-06-03</div>
+                            <span class="badge bg-primary rounded-pill align-self-end">9</span>
+                        </div>
+                    </div>
+                </div>
 
+                <!-- 추가 채팅방은 복사해서 붙여넣기 -->
+
+            </div>
+        </div>
     </th:block>
     <th:block layout:fragment="script">
         <script>
-            const socket = new SockJS('/chat');
+            /*const socket = new SockJS('/chat');
             const stompClient = Stomp.over(socket);
 
             stompClient.connect({}, function () {
@@ -37,7 +88,11 @@
                     sender: "user1",
                     content: "Hello!"
                 }));
-            });
+            });*/
+
+            function goChat(chatId){
+                location.href = `/chat/${chatId}`;
+            }
 
         </script>
     </th:block>
