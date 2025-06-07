@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: task
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    properties:
+      hibernate:
+        show_sql: true
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        trace: true
+        web-allow-others: true
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:file:${user.dir}/task;MODE=MYSQL
+    username: sa
+    password:
+logging:
+  level:
+    org:
+      hibernate:
+        SQL: DEBUG
+        type:
+          descriptor:
+            sql: trace

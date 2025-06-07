@@ -96,9 +96,21 @@
                 padding: 0.5rem 1rem; background-color: #dc3545; color: white;
                 border-radius: 0.5rem; border: none;
             }
+            .chat-end-message {
+                background-color: #f1f1f1;
+                color: #6c757d;
+                border-radius: 0.5rem;
+                padding: 0.5rem 1rem;
+                text-align: center;
+                margin: 1rem auto;
+                display: inline-block;
+            }
+
         </style>
     </th:block>
     <th:block layout:fragment="content">
+        <input id="role" th:type="hidden" th:value="${session.sessionInfo.role}">
+
         <!-- GNB -->
         <div class="gnb">
             <div>상담 목적 : 배송 문의</div>
@@ -110,7 +122,7 @@
             <div class="main-chat" id="mainChat">
                 <div class="chat-list" id="mainChatList"></div>
                 <div class="input-area">
-                    <textarea class="chat-input form-control" id="mainInput" rows="1" placeholder="메시지 입력"></textarea>
+                    <textarea class="chat-input form-control" id="mainInput" rows="1" placeholder="메시지 입력" onkeydown="sendMainMessage()"></textarea>
                     <div class="input-button" id="observerToggle" style="display:none;" onclick="toggleObserver()">
                         <i class="fas fa-compress"></i>
                     </div>
@@ -124,7 +136,7 @@
             <div class="observer-chat" id="observerChat">
                 <div class="chat-list" id="observerChatList"></div>
                 <div class="input-area">
-                    <textarea class="chat-input form-control" id="observerInput" rows="1" placeholder="메시지 입력"></textarea>
+                    <textarea class="chat-input form-control" id="observerInput" rows="1" placeholder="메시지 입력" onkeydown="sendSubMessage()"></textarea>
                 </div>
             </div>
         </div>
@@ -156,9 +168,16 @@
                 toggleObserver();
             }
 
+            /**
+             * 채팅 종료
+             */
             function endChat() {
                 mainInput.disabled = true;
-                //observerInput.disabled = true;
+
+                stompClient.send(`/pub/${pathname}`, {}, JSON.stringify({
+                    content: "end",
+                    type: "event"
+                }));
             }
 
             const chatData = {
@@ -180,7 +199,15 @@
                 return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}-${date.getHours()}-${date.getMinutes()}`;
             }
 
+            /**
+             * 채팅 메시지 추가
+             * @param target
+             * @param sender
+             * @param message
+             * @param type
+             */
             function appendChat(target, sender, message, type) {
+                console.log(`type : ${type}`) // TODO
                 const list = document.getElementById(target);
                 const now = Date.now();
                 const last = chatData[target].length ? chatData[target][chatData[target].length - 1] : null;
@@ -232,22 +259,111 @@
             function f3(msg) { appendChat('observerChatList', '옵저버', msg, 'observer'); }
             function f4(msg) { appendChat('observerChatList', '상담사', msg, 'agent'); }
 
-            //const socket = new SockJS('/chat');
-            //const stompClient = Stomp.over(socket);
+            const socket = new SockJS('/socket');
+            const stompClient = Stomp.over(socket);
+            const pathname = location.pathname;
 
-            /*
             stompClient.connect({}, function () {
-                stompClient.subscribe('/topic/messages', function (messageOutput) {
-                    const message = JSON.parse(messageOutput.body);
-                    console.log(message);
-                });
+                stompClient.subscribe(`/sub${pathname}`, function (res) {
+                    const message = JSON.parse(res.body);
+                    //console.log(message);
 
-                stompClient.send("/app/send", {}, JSON.stringify({
-                    sender: "user1",
-                    content: "Hello!"
-                }));
+                    let role = document.getElementById("role").value;
+
+                    if(message.type === "message"){
+
+                        if(role === "CUSTOMER"){
+                            if(message.role === "CUSTOMER"){
+                                appendChat('mainChatList', '', message.content, 'agent');
+                            } else {
+                                appendChat('mainChatList', '고객', message.content, 'customer');
+                            }
+                        } else if (role === "USER"){
+                            if(message.target === "MAIN"){
+                                if(message.role === "USER"){
+                                    appendChat('mainChatList', '', message.content, 'agent');
+                                } else {
+                                    appendChat('mainChatList', '고객', message.content, 'customer');
+                                }
+                            } else {
+                                if(message.role === "USER"){
+                                    appendChat('observerChatList', '', message.content, 'agent');
+                                } else {
+                                    appendChat('observerChatList', '옵저버', message.content, 'observer');
+                                }
+                            }
+                        } else if (role === "OBSERVER"){
+                            if(message.role === "OBSERVER"){
+                                appendChat('observerChatList', '', message.content, 'agent');
+                            } else {
+                                appendChat('observerChatList', '상담사', message.content, 'observer');
+                            }
+                        }
+                    } else if(message.type === "event"){
+                        switch (message.content){
+                            case "end":
+                                mainInput.disabled = true;
+                                const endMessage = document.createElement('div');
+                                endMessage.className = 'chat-end-message';
+                                endMessage.textContent = '상담이 종료되었습니다.';
+                                document.getElementById('mainChatList').appendChild(endMessage);
+                                break;
+                        }
+                    }
+
+                    //appendChat('mainChatList', '고객', message.content, 'customer');
+
+                    // TODO : 메시지에 대한 처리
+                });
             });
-            */
+
+            /**
+             * 고객 & 상담사 메시지 보내기
+             */
+            function sendMainMessage() {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+
+                    const content = document.getElementById("mainInput").value;
+                    if(content === null || content === ""){
+                        alert("메시지를 입력해주세요.");
+                        return;
+                    }
+
+                    stompClient.send(`/pub/${pathname}`, {}, JSON.stringify({
+                        content,
+                        role: document.getElementById("role").value,
+                        target: "MAIN",
+                        type: "message"
+                    }));
+
+                    document.getElementById("mainInput").value = "";
+                }
+            }
+
+            /**
+             * 상담사 & 옵저버 메시지 보내기
+             */
+            function sendSubMessage() {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+
+                    const content = document.getElementById("observerInput").value;
+                    if(content === null || content === ""){
+                        alert("메시지를 입력해주세요.");
+                        return;
+                    }
+
+                    stompClient.send(`/pub/${pathname}`, {}, JSON.stringify({
+                        content,
+                        role: document.getElementById("role").value,
+                        target: "OBSERVE",
+                        type: "message"
+                    }));
+
+                    document.getElementById("observerInput").value = "";
+                }
+            }
 
         </script>
     </th:block>

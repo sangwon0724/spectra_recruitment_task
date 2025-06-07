@@ -75,23 +75,8 @@
     </th:block>
     <th:block layout:fragment="script">
         <script>
-            /*const socket = new SockJS('/chat');
-            const stompClient = Stomp.over(socket);
-
-            stompClient.connect({}, function () {
-                stompClient.subscribe('/topic/messages', function (messageOutput) {
-                    const message = JSON.parse(messageOutput.body);
-                    console.log(message);
-                });
-
-                stompClient.send("/app/send", {}, JSON.stringify({
-                    sender: "user1",
-                    content: "Hello!"
-                }));
-            });*/
-
             function goChat(chatId){
-                location.href = `/chat/${chatId}`;
+                location.href = `/consult/chats/${chatId}`;
             }
 
         </script>

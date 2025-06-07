@@ -5,16 +5,16 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 
-@RequestMapping("/chat")
+@RequestMapping("/consult")
 @Controller
-public class ChatController {
-    @GetMapping("/list")
+public class ConsultController {
+    @GetMapping("/chats")
     public String list(){
         return "chat/list";
     }
 
-    @GetMapping("/{chatId}")
-    public String chat(@PathVariable("chatId") String chatId){
+    @GetMapping("/chats/{chatRoomId}")
+    public String chat(@PathVariable("chatRoomId") String chatRoomId){
         return "chat/chat";
     }
 }
