@@ -155,7 +155,7 @@
 
                     <!-- Body -->
                     <div class="modal-body">
-                        채팅을 종료합니다.<br/>
+                        상담을 종료합니다.<br/>
                         사이드 채팅 로그를 저장하시겠습니까?
                     </div>
 
@@ -455,7 +455,13 @@
              * 채팅 종료 컨펌 띄우기
              */
             function confirmEndChat(){
-                endModal.show();
+                if(roomInfo.subPathname === ""){
+                    if(confirm("상담을 종료하시겠습니까?")){
+                        endChat("Y");
+                    }
+                } else {
+                    endModal.show();
+                }
             }
 
             /**

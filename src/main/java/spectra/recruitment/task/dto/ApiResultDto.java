@@ -5,6 +5,7 @@ import lombok.Setter;
 import spectra.recruitment.task.values.ErrorCode;
 
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * API 결과 반황용 DTO
@@ -39,5 +40,19 @@ public class ApiResultDto {
         dto.setCode(errorCode.getCode());
         dto.setMsg(errorCode.getMsg());
         return dto;
+    }
+
+    /**
+     * 에러 데이터로 변환
+     * - 특이사항 : result_data 초기화 코드 존재
+     * @param errorCode 에러 코드
+     * @param errors 에러 메시지 리스트
+     */
+    public void changeToError(ErrorCode errorCode, List<String> errors){
+        this.type= TYPE_ERROR;
+        this.code = errorCode.getCode();
+        this.msg = errorCode.getMsg();
+        this.data.clear();
+        this.addResultData("errors", errors);
     }
 }
