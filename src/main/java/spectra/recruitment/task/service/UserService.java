@@ -3,6 +3,7 @@ package spectra.recruitment.task.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import spectra.recruitment.task.dto.LoginDto;
 import spectra.recruitment.task.dto.UserDto;
 import spectra.recruitment.task.entity.User;
@@ -15,6 +16,7 @@ import java.util.Base64;
 @Slf4j
 @RequiredArgsConstructor
 @Service
+@Transactional
 public class UserService {
     private final UserRepository userRepository;
 
@@ -23,6 +25,7 @@ public class UserService {
      * @param loginDto 로그인용 객체
      * @return
      */
+    @Transactional(readOnly = true)
     public UserDto login(LoginDto loginDto) {
         String encodePw = "";
 

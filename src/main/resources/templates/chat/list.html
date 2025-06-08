@@ -31,10 +31,20 @@
                 overflow: hidden;
                 text-overflow: ellipsis;
                 max-width: 100%;
+                font-size: 15px;
+                line-height: 15px;
+                min-height: 15px;
             }
             .chat-meta {
                 font-size: 0.8rem;
                 color: #6c757d;
+            }
+            .list-group-item.end{
+                background: #DFDFDF;
+            }
+            .list-group-item.end .chat-preview{
+                color: #AFAFAF;
+
             }
         </style>
     </th:block>
@@ -43,7 +53,7 @@
             <h5 class="mb-3 fw-semibold">채팅 목록</h5>
             <div class="list-group">
                 <!-- 채팅 항목 -->
-                <div class="list-group-item chat-item mb-2 px-3 py-3" onclick="goChat(1)">
+                <!--<div class="list-group-item chat-item mb-2 px-3 py-3" onclick="goChat(1)">
                     <div class="row">
                         <div class="col">
                             <div class="chat-purpose mb-1">상담 목적: 배송 문의</div>
@@ -66,19 +76,53 @@
                             <span class="badge bg-primary rounded-pill align-self-end">9</span>
                         </div>
                     </div>
-                </div>
-
-                <!-- 추가 채팅방은 복사해서 붙여넣기 -->
-
+                </div>-->
             </div>
         </div>
     </th:block>
     <th:block layout:fragment="script">
         <script>
+            const listGroup = document.querySelector(".list-group");
+
             function goChat(chatId){
                 location.href = `/consult/chats/${chatId}`;
             }
 
+            fetchJson("/api/consult/chats" ,"GET" ,{} ,(resData) => {
+                const list = resData.data.list ?? [];
+
+                if(list.length === 0){
+                    let htmlStr = `생성된 채팅방이 없습니다.`;
+                    listGroup.insertAdjacentHTML('beforeend', htmlStr);
+                    return;
+                }
+
+                for (const item of list) {
+                    let lastMessage = item.useYn === "N" ? "상담이 종료되었습니다." : (item.lastMessage ?? "");
+                    if(lastMessage === ""){
+                        lastMessage = "상담이 시작되었습니다.";
+                    }
+
+                    let htmlStr =
+                    `
+                    <div class="list-group-item chat-item mb-2 px-3 py-3 ${item.useYn === "N" ? 'end' : ''}" onclick="goChat(${item.roomId})">
+                        <div class="row">
+                            <div class="col">
+                                <div class="chat-purpose mb-1">상담 목적: ${item.roomNm ?? ""}</div>
+                                <div class="chat-preview">${lastMessage}</div>
+                            </div>
+                            <div class="col-auto text-end d-flex flex-column justify-content-between">
+                                <div class="chat-meta">${item.createdDate ?? ""}</div>
+                                <div class="badge bg-primary rounded-pill align-self-end" style="display: ${item.subRoomId == null ? 'none': 'block'}">
+                                    !
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    `;
+                    listGroup.insertAdjacentHTML('beforeend', htmlStr);
+                }
+            });
         </script>
     </th:block>
 </html>

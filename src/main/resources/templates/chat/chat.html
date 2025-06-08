@@ -109,12 +109,13 @@
         </style>
     </th:block>
     <th:block layout:fragment="content">
+        <input id="sessionId" th:type="hidden" th:value="${session.sessionInfo.sessionId}">
         <input id="role" th:type="hidden" th:value="${session.sessionInfo.role}">
 
         <!-- GNB -->
         <div class="gnb">
-            <div>상담 목적 : 배송 문의</div>
-            <button class="end-button" onclick="endChat()">상담 종료</button>
+            <div>상담 목적 : <span></span></div>
+            <button class="end-button" onclick="confirmEndChat()" style="display: none;">상담 종료</button>
         </div>
 
         <div class="chat-wrapper">
@@ -122,11 +123,11 @@
             <div class="main-chat" id="mainChat">
                 <div class="chat-list" id="mainChatList"></div>
                 <div class="input-area">
-                    <textarea class="chat-input form-control" id="mainInput" rows="1" placeholder="메시지 입력" onkeydown="sendMainMessage()"></textarea>
-                    <div class="input-button" id="observerToggle" style="display:none;" onclick="toggleObserver()">
+                    <textarea class="chat-input form-control" id="mainInput" rows="1" placeholder="메시지 입력" onkeydown="sendMainMessage()" th:disabled="${session.sessionInfo.role == 'OBSERVER' ? true : false}"></textarea>
+                    <div class="input-button" id="observerToggle" style="display:none;" onclick="toggleObserver()" title="대화창 확장/축소">
                         <i class="fas fa-compress"></i>
                     </div>
-                    <div class="input-button" id="observerAdd" onclick="showObserverToggle()" title="확장/축소">
+                    <div class="input-button" id="observerAdd" onclick="createSubChannel()" title="채팅창 활성화" style="display: none;">
                         <i class="fas fa-user-plus"></i>
                     </div>
                 </div>
@@ -140,16 +141,288 @@
                 </div>
             </div>
         </div>
+
+        <!-- Modal -->
+        <div class="modal fade" id="chatConfirmModal" tabindex="-1" aria-labelledby="chatConfirmLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+
+                    <!-- Header -->
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="chatConfirmLabel">알림</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
+                    </div>
+
+                    <!-- Body -->
+                    <div class="modal-body">
+                        채팅을 종료합니다.<br/>
+                        사이드 채팅 로그를 저장하시겠습니까?
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="modal-footer justify-content-center">
+                        <button type="button" class="btn btn-primary" onclick="endChat('Y')">저장</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" onclick="endChat('N')">폐기</button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
     </th:block>
     <th:block layout:fragment="script">
         <script>
-            const observerChat = document.getElementById('observerChat');
+            // 변수 선언
             const mainChat = document.getElementById('mainChat');
+            const observerChat = document.getElementById('observerChat');
             const observerToggle = document.getElementById('observerToggle');
-            const observerAdd = document.getElementById('observerAdd');
-            const mainInput = document.getElementById('mainInput');
-            const observerInput = document.getElementById('observerInput');
+            const observerAdd = document.getElementById('observerAdd'); // 옵저버 채팅 활성화 버트
+            const mainInput = document.getElementById('mainInput'); // 고객 & 상담사용 입력란
+            const observerInput = document.getElementById('observerInput'); // 상담사 & 옵저버용 입력란
+            const endButton = document.querySelector(".end-button"); // 상담 종료 버튼
+            const socket = new SockJS('/socket');
+            const stompClient = Stomp.over(socket);
+            const endModal = new bootstrap.Modal(document.getElementById('chatConfirmModal'));
 
+            const roomInfo = {
+                mainPathname: location.pathname,
+                mainRoomId: Number(location.pathname.replace("/consult/chats/", "")),
+                subPathname: "",
+                subRoomId: "",
+            }
+
+            const sessionInfo = {
+                sessionId: document.getElementById("sessionId").value,
+                role: document.getElementById("role").value,
+            }
+
+            // 채팅 데이터
+            const chatData = {
+                mainChatList: [],
+                observerChatList: []
+            };
+
+            // 클라이언트
+            const stompClients = {};
+
+            /**
+             * 메인 채널 구독
+             */
+            function mainChannelConnect(){
+                stompClient.connect({}, function () {
+                    stompClients.main =
+                        stompClient.subscribe(`/sub${roomInfo.mainPathname}`, function (res) {
+                            const message = JSON.parse(res.body);
+                            //console.log(message);
+
+                            let role = sessionInfo.role;
+                            const target = "mainChatList";
+                            const content = message.content;
+                            let sender = "";
+                            let className = role === message.role ? "agent" : "customer";
+
+                            if(message.type === "message"){
+                                if(role === "CUSTOMER" && message.role === "USER"){
+                                    sender = "상담사";
+                                } else if(role === "USER" && message.role === "CUSTOMER"){
+                                    sender = "고객";
+                                } else if(role === "OBSERVER"){
+                                    switch (message.role){
+                                        case "CUSTOMER":
+                                            sender = "고객";
+                                            className = "customer";
+                                            break
+                                        case "USER":
+                                            sender = "상담사";
+                                            className = "agent";
+                                            break;
+                                    }
+                                }
+                                appendChat(target, sender, content, className);
+                            } else if(message.type === "event"){
+                                let split = message.content.split(":");
+                                switch (split[0]){
+                                    case "end":
+                                        endEvent();
+                                        break;
+                                    case "observe":
+                                        if(["USER", "OBSERVER"].includes(role)){
+                                            subChannelConnect(split[1]);
+                                            showObserverToggle();
+                                        }
+                                        break;
+                                }
+                            }
+                        });
+                });
+            }
+
+            /**
+             * 서브 채널 구독
+             * @param newPath 신규 채팅방 경로
+             */
+            function subChannelConnect(newPath){
+                roomInfo.subPathname = newPath;
+                roomInfo.subRoomId = Number(newPath.replace("/consult/chats/", ""));
+
+                stompClients.sub =
+                stompClient.subscribe(`/sub${roomInfo.subPathname}`, function (res) {
+                    const message = JSON.parse(res.body);
+                    const role = sessionInfo.role;
+                    const target = "observerChatList";
+                    const content = message.content;
+                    let sender = "";
+                    let className = role === message.role ? "agent" : "observer";
+
+                    if(message.type === "message"){
+                        if(role === "OBSERVER" && message.role === "USER"){
+                            sender = "상담사";
+                        } else if (role === "USER" && message.role === "OBSERVER"){
+                            sender = "옵저버";
+                        }
+                        appendChat(target, sender, content, className);
+                    }
+                });
+            }
+
+            /**
+             * 종료된 채팅에 대한 이벤트
+             * - 상담 종료 버튼 클릭 시 실행
+             * - 종료된 상담 입장 시 실행
+             */
+            function endEvent(){
+                mainInput.disabled = true;
+                observerInput.disabled = true;
+                if(endButton !== null){
+                    endButton.disabled = true;
+                    endButton.style.display = 'none';
+                }
+                const endMessage = document.createElement('div');
+                endMessage.className = 'chat-end-message';
+                endMessage.textContent = '상담이 종료되었습니다.';
+                document.getElementById('mainChatList').appendChild(endMessage);
+            }
+
+            /**
+             * 채팅 목록 조회
+             */
+            fetchJson(`/api/consult/chats/${roomInfo.mainRoomId}`, "GET", {}, (resData) => {
+                const {
+                    roomId,
+                    refRoomId,
+                    roomNm,
+                    useYn,
+                    mainChats,
+                    subChats,
+                } = resData.data.chatInfo;
+
+                roomInfo.mainRoomId = roomId;
+                roomId.mainPathname = `/consult/chats/${roomId}`
+
+                // 상담 종료 버튼 활성화
+                if(sessionInfo.role === "USER"){
+                    endButton.removeAttribute("style");
+                }
+
+                // 옵저버 채팅 시작 버튼 활성화
+                if(sessionInfo.role === "OBSERVER"){
+                    observerAdd.removeAttribute("style");
+                }
+
+                // 타이틀 수정
+                document.querySelector(".gnb div span").innerHTML = roomNm;
+
+                // 옵저버 채팅방이 존재할 경우 버튼 활성화
+                if(refRoomId !== null){
+                    roomInfo.subRoomId = refRoomId;
+                    roomId.subPathname = `/consult/chats/${refRoomId}`;
+                    showObserverToggle();
+                }
+
+                // 메인 채팅에 대한 처리
+                for (const message of mainChats) {
+                    let role = sessionInfo.role;
+                    const target = "mainChatList";
+                    const content = message.content;
+                    let sender = "";
+                    let className = role === message.role ? "agent" : "customer";
+
+                    if(message.type === "message"){
+                        if(role === "CUSTOMER" && message.role === "USER"){
+                            sender = "상담사";
+                        } else if(role === "USER" && message.role === "CUSTOMER"){
+                            sender = "고객";
+                        } else if(role === "OBSERVER"){
+                            switch (message.role){
+                                case "CUSTOMER":
+                                    sender = "고객";
+                                    className = "customer";
+                                    break
+                                case "USER":
+                                    sender = "상담사";
+                                    className = "agent";
+                                    break;
+                            }
+                        }
+                        appendChat(target, sender, content, className);
+                    }
+                } // for
+
+                // 서브 채팅에 대한 처리
+                for (const message of subChats) {
+                    const role = sessionInfo.role;
+                    const target = "observerChatList";
+                    const content = message.content;
+                    let sender = "";
+                    let className = role === message.role ? "agent" : "observer";
+
+                    if(message.type === "message"){
+                        if(role === "OBSERVER" && message.role === "USER"){
+                            sender = "상담사";
+                        } else if (role === "USER" && message.role === "OBSERVER"){
+                            sender = "옵저버";
+                        }
+                        appendChat(target, sender, content, className);
+                    }
+                }
+
+                // 진행 중인 채팅방에 대한 처리
+                if(useYn === "Y"){
+                    mainChannelConnect(); // 메인 채널 구독
+                    if(refRoomId !== null && ["USER", "OBSERVER"].includes(sessionInfo.role)){
+                        subChannelConnect(roomInfo.subPathname); // 서브 채널 구독
+                    }
+                }
+
+                // 종료된 채팅방에 대한 처리
+                if(useYn === "N"){
+                    endEvent();
+                }
+            });
+
+            /**
+             * 서브 채팅방 생성
+             */
+            function createSubChannel(){
+                fetchJson("/api/consult/observer" ,"POST" ,{
+                    refRoomId: roomInfo.mainRoomId,
+                } ,(resData) => {
+                    const newPath = resData.data.chatInfo.roomUrl;
+                    roomInfo.subPathname = newPath;
+                    roomInfo.subRoomId = Number(newPath.replace("/consult/chats/", ""));
+                    stompClient.send(`/pub${roomInfo.mainPathname}`, {}, JSON.stringify({
+                        roomId: roomInfo.mainRoomId,
+                        sessionId: sessionInfo.sessionId,
+                        content: `observe:${roomInfo.subPathname}`,
+                        role: sessionInfo.role,
+                        target: "MAIN",
+                        type: "event"
+                    }));
+                });
+            }
+
+            /**
+             * 상담사 & 옵저버 채팅 영역 활성화
+             */
             function toggleObserver() {
                 if (observerChat.style.width === '30%') {
                     observerChat.style.width = '0';
@@ -162,29 +435,63 @@
                 }
             }
 
+            /**
+             * 옵저버와의 채팅 기능 활성화
+             */
             function showObserverToggle() {
-                observerAdd.style.display = 'none';
+                // 옵저버 권한이 없으면 버튼이 존재하지 않음
+                if(observerAdd){
+                    observerAdd.style.display = 'none';
+                }
                 observerToggle.style.display = 'flex';
                 toggleObserver();
             }
 
             /**
-             * 채팅 종료
+             * 채팅 종료 컨펌 띄우기
              */
-            function endChat() {
-                mainInput.disabled = true;
-
-                stompClient.send(`/pub/${pathname}`, {}, JSON.stringify({
-                    content: "end",
-                    type: "event"
-                }));
+            function confirmEndChat(){
+                endModal.show();
             }
 
-            const chatData = {
-                mainChatList: [],
-                observerChatList: []
-            };
+            /**
+             * 채팅 종료
+             * @param saveYn 사이드 채팅 보관 여부
+             */
+            function endChat(saveYn) {
+                const param = {};
+                param.mainRoomId = roomInfo.mainRoomId;
+                param.subRoomId =  roomInfo.subRoomId;
+                param.saveYn = saveYn;
+                fetchJson("/api/consult/end" ,"POST" ,param ,(resData) => {
+                    mainInput.disabled = true;
+                    observerInput.disabled = true;
 
+                    stompClient.send(`/pub${roomInfo.mainPathname}`, {}, JSON.stringify({
+                        roomId: roomInfo.mainRoomId,
+                        sessionId: sessionInfo.sessionId,
+                        content: "end",
+                        role: sessionInfo.role,
+                        target: "MAIN",
+                        type: "event"
+                    }));
+
+
+                    // 구독 해제
+                    setTimeout(() => {
+                        stompClients?.main?.unsubscribe();
+                        stompClients?.sub?.unsubscribe();
+                    }, 1000);
+
+                    endModal.hide();
+                });
+            }
+
+            /**
+             * 시간 출력용 포맷팅
+             * @param timestamp
+             * @returns {string}
+             */
             function formatTime(timestamp) {
                 const date = new Date(timestamp);
                 let hour = date.getHours();
@@ -194,6 +501,11 @@
                 return `${period} ${hour}:${minute}`;
             }
 
+            /**
+             * 시간 비교를 위한 포맷팀
+             * @param timestamp
+             * @returns {string}
+             */
             function getFormattedTimeKey(timestamp) {
                 const date = new Date(timestamp);
                 return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}-${date.getHours()}-${date.getMinutes()}`;
@@ -207,7 +519,6 @@
              * @param type
              */
             function appendChat(target, sender, message, type) {
-                console.log(`type : ${type}`) // TODO
                 const list = document.getElementById(target);
                 const now = Date.now();
                 const last = chatData[target].length ? chatData[target][chatData[target].length - 1] : null;
@@ -254,69 +565,6 @@
                 chatData[target].push({ sender, time: now });
             }
 
-            function f1(msg) { appendChat('mainChatList', '고객', msg, 'customer'); }
-            function f2(msg) { appendChat('mainChatList', '상담사', msg, 'agent'); }
-            function f3(msg) { appendChat('observerChatList', '옵저버', msg, 'observer'); }
-            function f4(msg) { appendChat('observerChatList', '상담사', msg, 'agent'); }
-
-            const socket = new SockJS('/socket');
-            const stompClient = Stomp.over(socket);
-            const pathname = location.pathname;
-
-            stompClient.connect({}, function () {
-                stompClient.subscribe(`/sub${pathname}`, function (res) {
-                    const message = JSON.parse(res.body);
-                    //console.log(message);
-
-                    let role = document.getElementById("role").value;
-
-                    if(message.type === "message"){
-
-                        if(role === "CUSTOMER"){
-                            if(message.role === "CUSTOMER"){
-                                appendChat('mainChatList', '', message.content, 'agent');
-                            } else {
-                                appendChat('mainChatList', '고객', message.content, 'customer');
-                            }
-                        } else if (role === "USER"){
-                            if(message.target === "MAIN"){
-                                if(message.role === "USER"){
-                                    appendChat('mainChatList', '', message.content, 'agent');
-                                } else {
-                                    appendChat('mainChatList', '고객', message.content, 'customer');
-                                }
-                            } else {
-                                if(message.role === "USER"){
-                                    appendChat('observerChatList', '', message.content, 'agent');
-                                } else {
-                                    appendChat('observerChatList', '옵저버', message.content, 'observer');
-                                }
-                            }
-                        } else if (role === "OBSERVER"){
-                            if(message.role === "OBSERVER"){
-                                appendChat('observerChatList', '', message.content, 'agent');
-                            } else {
-                                appendChat('observerChatList', '상담사', message.content, 'observer');
-                            }
-                        }
-                    } else if(message.type === "event"){
-                        switch (message.content){
-                            case "end":
-                                mainInput.disabled = true;
-                                const endMessage = document.createElement('div');
-                                endMessage.className = 'chat-end-message';
-                                endMessage.textContent = '상담이 종료되었습니다.';
-                                document.getElementById('mainChatList').appendChild(endMessage);
-                                break;
-                        }
-                    }
-
-                    //appendChat('mainChatList', '고객', message.content, 'customer');
-
-                    // TODO : 메시지에 대한 처리
-                });
-            });
-
             /**
              * 고객 & 상담사 메시지 보내기
              */
@@ -330,7 +578,9 @@
                         return;
                     }
 
-                    stompClient.send(`/pub/${pathname}`, {}, JSON.stringify({
+                    stompClient.send(`/pub${roomInfo.mainPathname}`, {}, JSON.stringify({
+                        roomId: roomInfo.mainRoomId,
+                        sessionId: sessionInfo.sessionId,
                         content,
                         role: document.getElementById("role").value,
                         target: "MAIN",
@@ -354,9 +604,11 @@
                         return;
                     }
 
-                    stompClient.send(`/pub/${pathname}`, {}, JSON.stringify({
+                    stompClient.send(`/pub${roomInfo.subPathname}`, {}, JSON.stringify({
+                        roomId: roomInfo.subRoomId,
+                        sessionId: sessionInfo.sessionId,
                         content,
-                        role: document.getElementById("role").value,
+                        role: sessionInfo.role,
                         target: "OBSERVE",
                         type: "message"
                     }));
@@ -364,7 +616,6 @@
                     document.getElementById("observerInput").value = "";
                 }
             }
-
         </script>
     </th:block>
 </html>

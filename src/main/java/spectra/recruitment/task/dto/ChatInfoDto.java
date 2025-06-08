@@ -4,12 +4,13 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * 고객 정보 DTO
+ * 채팅 정보 반환용 DTO
  */
 @Getter
 @Setter
-public class CustomerDto {
-    private Long sessionId;
+public class ChatInfoDto {
     private String consultType;
-    private String role = "CUSTOMER";
+    private Long roomId;
+    private String roomUrl;
+    private Long refRoomId;
 }

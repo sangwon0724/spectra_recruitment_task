@@ -46,4 +46,14 @@ public class BaseEntity {
         this.createdDate = now;
         this.lastModifiedDate = now;
     }
+
+    /**
+     * update를 위한 처리
+     * @param by 수정자 아이디
+     */
+    public void update(String by){
+        LocalDateTime now = LocalDateTime.now();
+        this.lastModifiedBy = by;
+        this.lastModifiedDate = now;
+    }
 }

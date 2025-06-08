@@ -6,6 +6,9 @@ import spectra.recruitment.task.values.ErrorCode;
 
 import java.util.HashMap;
 
+/**
+ * API 결과 반황용 DTO
+ */
 @Getter
 @Setter
 public class ApiResultDto {
