@@ -81,7 +81,7 @@ public class ConsultRestController {
     }
 
     /**
-     * 채팅 목록 조회
+     * 채팅 상세 조회
      * @return
      */
     @GetMapping("/chats/{roomId}")

@@ -296,6 +296,10 @@
                     endButton.disabled = true;
                     endButton.style.display = 'none';
                 }
+                if(observerAdd !== null){
+                    observerAdd.disabled = true;
+                    observerAdd.style.display = 'none';
+                }
                 const endMessage = document.createElement('div');
                 endMessage.className = 'chat-end-message';
                 endMessage.textContent = '상담이 종료되었습니다.';
